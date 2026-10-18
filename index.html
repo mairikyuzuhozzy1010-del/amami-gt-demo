@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奄美GTフィールドノート</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071b28;color:#eef8fc;font-family:system-ui,sans-serif}
+header{background:#10364b;padding:22px 16px;text-align:center}
+h1{font-size:23px;margin:0}
+small{color:#a6c9d5}
+nav{display:flex;background:#092a3b;position:sticky;top:0}
+nav button{flex:1;padding:15px 2px;border:0;background:transparent;color:#b7d1dd;font-weight:bold}
+nav button.on{color:#66e3c0;border-bottom:3px solid #66e3c0}
+main{padding:16px;max-width:650px;margin:auto}
+section{display:none}
+section.on{display:block}
+.card{background:#123548;border:1px solid #28546a;border-radius:14px;padding:16px;margin:12px 0}
+h2{font-size:19px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0 12px;background:#eaf5f7;color:#102a39;border:0;border-radius:8px;font-size:16px}
+textarea{min-height:85px}
+label{font-size:14px}
+.action{background:#42d6b0;color:#062e2b;border:0;border-radius:9px;padding:13px 18px;font-weight:bold}
+.note{color:#b5ced7;font-size:13px}
+.item{border-bottom:1px solid #335668;padding:12px 0;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header>
+<h1>🎣 奄美GTフィールドノート</h1>
+<small>親子GT研究所 / DEMO v0.1</small>
+</header>
+<nav>
+<button class="on" onclick="tab(0)">ホーム</button>
+<button onclick="tab(1)">釣行</button>
+<button onclick="tab(2)">自然観察</button>
+</nav>
+<main>
+<section class="on">
+<h2>🌊 調査ダッシュボード</h2>
+<div class="card">
+<h2>GTを探す、その理由を探す。</h2>
+<p>山・川・浜・インリーフ・沖合。</p>
+<p>釣果だけでなく、ノーバイトや自然の変化も記録する研究ノート。</p>
+</div>
+<div class="card">
+<h2>🗺️ ポイント管理</h2>
+<p>地図・GPS機能は次のバージョンで追加予定。</p>
+<p class="note">この公開デモには秘密ポイントを登録しないでね。</p>
+</div>
+<div class="card">
+<h2>📊 記録件数</h2>
+<p id="count">0 件</p>
+</div>
+</section>
+<section>
+<h2>🐟 釣行記録</h2>
+<div class="card">
+<label>釣行日</label><input type="date" id="date">
+<label>場所（デモ用の仮名）</label><input id="place" placeholder="例：テストポイント">
+<label>釣果</label>
+<select id="result">
+<option>ノーバイト</option>
+<option>バイトあり・釣果なし</option>
+<option>キャッチ</option>
+<option>魚を目撃</option>
+</select>
+<label>観察した事実</label>
+<textarea id="fact" placeholder="風、潮、ベイト、魚の反応など"></textarea>
+<label>考えた仮説</label>
+<textarea id="hyp" placeholder="なぜ反応したのか？"></textarea>
+<button class="action" onclick="save('trip')">記録する</button>
+</div>
+<h2>保存した釣行</h2>
+<div id="trips"></div>
+</section>
+<section>
+<h2>🦀 自然イベント</h2>
+<div class="card">
+<p>季節ごとに調べたいテーマ</p>
+<p>🐟 秋のシイラ回遊</p>
+<p>🐠 春のベイト接岸・ミジュン</p>
+<p>🦀 満月期のカニの移動</p>
+<p>🐚 8月大潮のヤドカリ</p>
+<p>🐢 ウミガメの行動・孵化</p>
+</div>
+<div class="card">
+<label>観察日</label><input type="date" id="edate">
+<label>イベント</label>
+<select id="event">
+<option>シイラ</option>
+<option>ミジュン・ベイト</option>
+<option>カニ</option>
+<option>ヤドカリ</option>
+<option>ウミガメ</option>
+<option>その他</option>
+</select>
+<label>観察した事実</label>
+<textarea id="observation"></textarea>
+<label>仮説・気づき</label>
+<textarea id="idea"></textarea>
+<button class="action" onclick="save('nature')">記録する</button>
+</div>
+<h2>保存した観察</h2>
+<div id="events"></div>
+</section>
+<p class="note">試作品です。データはこの端末のブラウザ内だけに保存されます。端末間同期やバックアップは未対応です。</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const key="amami_gt_demo_v01";
+let records=[];
+try{records=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
+function tab(n){
+document.querySelectorAll("section").forEach((e,i)=>e.classList.toggle("on",i===n));
+document.querySelectorAll("nav button").forEach((e,i)=>e.classList.toggle("on",i===n));
+}
+function save(type){
+let r=type==="trip"?
+{type,date:$("date").value,kind:$("place").value||"テスト地点",result:$("result").value,fact:$("fact").value,hyp:$("hyp").value}:
+{type,date:$("edate").value,kind:$("event").value,fact:$("observation").value,hyp:$("idea").value};
+if(!r.date||!r.fact.trim()){alert("日付と観察事実を入力してね");return}
+records.unshift(r);
+try{localStorage.setItem(key,JSON.stringify(records))}catch(e){alert("保存できませんでした");return}
+render();
+alert("記録したぞ！ 🎣");
+}
+function render(){
+$("count").textContent=records.length+" 件";
+for(const [id,type] of [["trips","trip"],["events","nature"]]){
+const root=$(id);root.replaceChildren();
+for(const r of records.filter(x=>x.type===type)){
+const d=document.createElement("div");d.className="item";
+d.textContent=r.date+" / "+r.kind+(r.result?" / "+r.result:"")+"\n観察："+r.fact+"\n仮説："+(r.hyp||"なし");
+root.appendChild(d);
+}
+}
+}
+$("date").value=new Date().toLocaleDateString("sv-SE");
+$("edate").value=$("date").value;
+render();
+</script>
+</body>
+</html>
