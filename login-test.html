@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GTログインテスト</title>
+</head>
+<body>
+<h2>🎣 GTフィールドノート</h2>
+<p id="status">ログインしていません</p>
+<button id="login">Googleでログイン</button>
+<button id="logout" hidden>ログアウト</button>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+const app=initializeApp({
+apiKey:"AIzaSyBMYQ1zE0dIMpXxq2DoI9sjO1gnyxVsKWc",
+authDomain:"amami-gt-fieild-note.firebaseapp.com",
+projectId:"amami-gt-fieild-note",
+storageBucket:"amami-gt-fieild-note.firebasestorage.app",
+messagingSenderId:"216227273807",
+appId:"1:216227273807:web:e45e98bb8d8923154a9e3a"
+});
+const auth=getAuth(app);
+const status=document.getElementById("status");
+const login=document.getElementById("login");
+const logout=document.getElementById("logout");
+login.onclick=async()=>{
+try{await signInWithPopup(auth,new GoogleAuthProvider());}
+catch(e){status.textContent="エラー: "+e.code;}
+};
+logout.onclick=()=>signOut(auth);
+onAuthStateChanged(auth,user=>{
+status.textContent=user?"ログイン成功！ "+user.displayName:"ログインしていません";
+login.hidden=!!user;
+logout.hidden=!user;
+});
+</script>
+</body>
+</html>
