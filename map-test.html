@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>奄美GTフィールドノート｜地図テスト</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyo1a2t1vZ+f3E=" crossorigin="">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#091b29;color:#e8f5f5;font-family:system-ui,-apple-system,sans-serif}.header{padding:16px 16px 10px;background:#10364b}h1{font-size:20px;margin:0 0 6px}.sub{font-size:13px;color:#c4dddd;margin:0}.notice{font-size:13px;padding:10px 16px;background:#163c4b}#map{height:60vh;min-height:330px;width:100%}.panel{padding:16px;line-height:1.6}.coords{font-size:18px;font-weight:700;word-break:break-all}.actions{display:flex;gap:10px;flex-wrap:wrap}button{background:#00c7aa;border:0;border-radius:9px;padding:12px 16px;font-size:16px;font-weight:bold;color:#042e31}button:disabled{opacity:.5}.foot{color:#b7d0d3;font-size:12px;margin-top:12px}
+</style>
+</head>
+<body>
+<header class="header"><h1>🎣 奄美GTフィールドノート</h1><p class="sub">地図・ポイント登録 テスト版 v0.1</p></header>
+<div class="notice">🗺️ 地図をタップするとピンが立つぞ！ まだ保存はされません。</div>
+<div id="map" aria-label="奄美大島の地図"></div>
+<section class="panel"><div>選択した場所の座標</div><div class="coords" id="coords">地図をタップしてね</div><div class="actions"><button id="copy" disabled>📋 座標をコピー</button><button id="clear" disabled>✕ ピンを消す</button></div><div class="foot">※この画面は表示テスト専用。座標はサーバーに保存しません。地図の表示にはOpenStreetMapのタイルを利用します。</div></section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const map=L.map('map').setView([28.32,129.48],10);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+let marker=null,position=null;
+const coords=document.getElementById('coords'),copy=document.getElementById('copy'),clear=document.getElementById('clear');
+map.on('click',e=>{position=e.latlng;if(marker)marker.setLatLng(position);else marker=L.marker(position).addTo(map);coords.textContent=`${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;copy.disabled=false;clear.disabled=false;});
+copy.addEventListener('click',async()=>{if(!position)return;const value=`${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;try{await navigator.clipboard.writeText(value);copy.textContent='✓ コピーしたぞ！';setTimeout(()=>copy.textContent='📋 座標をコピー',1800)}catch(e){window.prompt('この座標をコピーしてね',value)}});
+clear.addEventListener('click',()=>{if(marker){map.removeLayer(marker);marker=null}position=null;coords.textContent='地図をタップしてね';copy.disabled=true;clear.disabled=true;});
+</script>
+</body>
+</html>
