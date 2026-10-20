@@ -1,0 +1,267 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奄美GTフィールドノート</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071b28;color:#eef8fc;font-family:system-ui,sans-serif}
+header{background:#10364b;padding:22px 16px;text-align:center}
+h1{font-size:23px;margin:0}
+small{color:#a6c9d5}
+nav{display:flex;background:#092a3b;position:sticky;top:0}
+nav button{flex:1;padding:15px 2px;border:0;background:transparent;color:#b7d1dd;font-weight:bold}
+nav button.on{color:#66e3c0;border-bottom:3px solid #66e3c0}
+main{padding:16px;max-width:650px;margin:auto}
+section{display:none}
+section.on{display:block}
+.card{background:#123548;border:1px solid #28546a;border-radius:14px;padding:16px;margin:12px 0}
+h2{font-size:19px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0 12px;background:#eaf5f7;color:#102a39;border:0;border-radius:8px;font-size:16px}
+textarea{min-height:85px}
+label{font-size:14px}
+.action{background:#42d6b0;color:#062e2b;border:0;border-radius:9px;padding:13px 18px;font-weight:bold}
+.note{color:#b5ced7;font-size:13px}
+.item{border-bottom:1px solid #335668;padding:12px 0;white-space:pre-wrap}
+.item-actions{display:flex;gap:8px;margin-top:10px}
+.small-action{border:1px solid #78b8cb;background:#19495c;color:white;border-radius:8px;padding:9px 14px}
+.small-action.danger{border-color:#e8a3a3;color:#ffd6d6}
+.edit-banner{color:#8cf1d1;font-weight:bold;margin:6px 0}
+button:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<header>
+<h1>🎣 奄美GTフィールドノート</h1>
+<small>親子GT研究所 / クラウド記録 v0.3（編集・削除対応）</small>
+</header>
+<nav>
+<button class="on" onclick="tab(0)">ホーム</button>
+<button onclick="tab(1)">釣行</button>
+<button onclick="tab(2)">自然観察</button>
+</nav>
+<main>
+<div class="card" id="auth-panel">
+<h2>🔐 クラウド接続</h2>
+<p id="auth-status">接続準備中…</p>
+<button class="action" id="login-button" disabled>Googleでログイン</button>
+<button class="action" id="logout-button" hidden>ログアウト</button>
+<p class="note">許可されたアカウントだけが記録を閲覧・保存できます。初回はテスト用の架空データで試してね。</p>
+</div>
+<section class="on">
+<h2>🌊 調査ダッシュボード</h2>
+<div class="card">
+<h2>GTを探す、その理由を探す。</h2>
+<p>山・川・浜・インリーフ・沖合。</p>
+<p>釣果だけでなく、ノーバイトや自然の変化も記録する研究ノート。</p>
+</div>
+<div class="card">
+<h2>🗺️ ポイント管理</h2>
+<p>地図・GPS機能は次のバージョンで追加予定。</p>
+<p class="note">この公開デモには秘密ポイントを登録しないでね。</p>
+</div>
+<div class="card">
+<h2>📊 記録件数</h2>
+<p id="count">0 件</p>
+</div>
+</section>
+<section>
+<h2>🐟 釣行記録</h2>
+<div class="card">
+<label>釣行日</label><input type="date" id="date">
+<label>場所（デモ用の仮名）</label><input id="place" placeholder="例：テストポイント">
+<label>釣果</label>
+<select id="result">
+<option>ノーバイト</option>
+<option>バイトあり・釣果なし</option>
+<option>キャッチ</option>
+<option>魚を目撃</option>
+</select>
+<label>観察した事実</label>
+<textarea id="fact" placeholder="風、潮、ベイト、魚の反応など"></textarea>
+<label>考えた仮説</label>
+<textarea id="hyp" placeholder="なぜ反応したのか？"></textarea>
+<p class="edit-banner" id="trip-edit-banner" hidden>✏️ この釣行記録を編集中</p>
+<button class="action" id="trip-save" onclick="save('trip')">記録する</button>
+<button class="small-action" id="trip-cancel" onclick="cancelEdit('trip')" hidden>編集をやめる</button>
+</div>
+<h2>保存した釣行</h2>
+<div id="trips"></div>
+</section>
+<section>
+<h2>🦀 自然イベント</h2>
+<div class="card">
+<p>季節ごとに調べたいテーマ</p>
+<p>🐟 秋のシイラ回遊</p>
+<p>🐠 春のベイト接岸・ミジュン</p>
+<p>🦀 満月期のカニの移動</p>
+<p>🐚 8月大潮のヤドカリ</p>
+<p>🐢 ウミガメの行動・孵化</p>
+</div>
+<div class="card">
+<label>観察日</label><input type="date" id="edate">
+<label>イベント</label>
+<select id="event">
+<option>シイラ</option>
+<option>ミジュン・ベイト</option>
+<option>カニ</option>
+<option>ヤドカリ</option>
+<option>ウミガメ</option>
+<option>その他</option>
+</select>
+<label>観察した事実</label>
+<textarea id="observation"></textarea>
+<label>仮説・気づき</label>
+<textarea id="idea"></textarea>
+<p class="edit-banner" id="nature-edit-banner" hidden>✏️ この自然観察を編集中</p>
+<button class="action" id="nature-save" onclick="save('nature')">記録する</button>
+<button class="small-action" id="nature-cancel" onclick="cancelEdit('nature')" hidden>編集をやめる</button>
+</div>
+<h2>保存した観察</h2>
+<div id="events"></div>
+</section>
+<p class="note">Firebaseクラウド版です。編集・削除はクラウドの記録に反映されます。元のスマホ内データは自動移行されません。親子共有には息子さんのUIDをFirestoreルールへ追加する必要があります。</p>
+</main>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import {getFirestore,collection,addDoc,doc,updateDoc,deleteDoc,query,orderBy,onSnapshot,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+const firebaseConfig={
+ apiKey:'AIzaSyBMYQ1zE0dIMpXxq2DoI9sjO1gnyxVsKWc',
+ authDomain:'amami-gt-fieild-note.firebaseapp.com',
+ projectId:'amami-gt-fieild-note',
+ storageBucket:'amami-gt-fieild-note.firebasestorage.app',
+ messagingSenderId:'216227273807',
+ appId:'1:216227273807:web:e45e98bb8d8923154a9e3a'
+};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const buttons=document.querySelectorAll('button[onclick^="save"]');
+let records=[];
+let stopListening=null;
+let currentUser=null;
+let editing={trip:null,nature:null};
+let busy=false;
+function status(message){$('auth-status').textContent=message;}
+function setEnabled(enabled){buttons.forEach(b=>b.disabled=!enabled);document.querySelectorAll('.item-actions button').forEach(b=>b.disabled=!enabled);}
+setEnabled(false);
+window.tab=function(n){
+ document.querySelectorAll('main section').forEach((e,i)=>e.classList.toggle('on',i===n));
+ document.querySelectorAll('nav button').forEach((e,i)=>e.classList.toggle('on',i===n));
+};
+$('login-button').disabled=false;
+$('login-button').onclick=async()=>{
+ try{
+  $('login-button').disabled=true;
+  await signInWithPopup(auth,new GoogleAuthProvider());
+ }catch(e){status('ログイン失敗: '+e.code+'（ブラウザのポップアップ設定も確認）');}
+ finally{$('login-button').disabled=false;}
+};
+$('logout-button').onclick=()=>signOut(auth);
+onAuthStateChanged(auth,user=>{
+ if(stopListening){stopListening();stopListening=null;}
+ currentUser=user;
+ records=[];cancelEdit('trip');cancelEdit('nature');render();
+ $('login-button').hidden=!!user;
+ $('logout-button').hidden=!user;
+ setEnabled(!!user);
+ if(!user){status('未ログイン。Googleでログインしてください。');return;}
+ status('ログイン済み。クラウドの記録を確認中…');
+ const q=query(collection(db,'records'),orderBy('createdAt','desc'));
+ stopListening=onSnapshot(q,snapshot=>{
+  records=snapshot.docs.map(d=>({id:d.id,...d.data()}));render();
+  status('ログイン済み：'+(user.displayName||user.email||'ユーザー')+' ／ クラウド同期中（'+records.length+'件）');
+ },error=>{status('クラウド読込エラー：'+error.code+'。FirestoreルールのUIDを確認してね。');setEnabled(false);});
+});
+const fields={trip:{date:'date',kind:'place',result:'result',fact:'fact',hyp:'hyp'},nature:{date:'edate',kind:'event',fact:'observation',hyp:'idea'}};
+function collect(type){
+ const f=fields[type];const r={type};
+ for(const [key,id] of Object.entries(f))r[key]=$(id).value;
+ if(type==='trip'&&!r.kind.trim())r.kind='テスト地点';
+ return r;
+}
+function clearForm(type){
+ const f=fields[type];
+ for(const [key,id] of Object.entries(f)){
+  if(key==='date')$(id).value=new Date().toLocaleDateString('sv-SE');
+  else if($(id).tagName==='SELECT')$(id).selectedIndex=0;
+  else $(id).value='';
+ }
+}
+window.cancelEdit=function(type){
+ editing[type]=null;
+ $(type+'-edit-banner').hidden=true;
+ $(type+'-cancel').hidden=true;
+ $(type+'-save').textContent='記録する';
+ clearForm(type);
+};
+window.save=async function(type){
+ if(!currentUser||busy){if(!currentUser)alert('先にログインしてね');return;}
+ const r=collect(type);
+ if(!r.date||!r.fact.trim()){alert('日付と観察事実を入力してね');return;}
+ const id=editing[type];
+ busy=true;setEnabled(false);
+ try{
+  if(id){
+   await updateDoc(doc(db,'records',id),{...r,updatedAt:serverTimestamp(),updatedBy:currentUser.uid});
+   alert('クラウドの記録を更新したぞ！ ✏️');
+  }else{
+   await addDoc(collection(db,'records'),{...r,createdAt:serverTimestamp(),createdBy:currentUser.uid});
+   alert('クラウドに記録したぞ！ 🎣');
+  }
+  cancelEdit(type);
+ }catch(e){alert('保存できませんでした：'+e.code+'。通信状態とルールを確認してね。');}
+ finally{busy=false;setEnabled(!!currentUser);}
+};
+window.editRecord=function(id){
+ if(!currentUser||busy)return;
+ const r=records.find(x=>x.id===id);if(!r||!fields[r.type])return;
+ const type=r.type;
+ if(editing[type]&&editing[type]!==id&&!confirm('編集中の内容を破棄して別の記録を編集する？'))return;
+ editing[type]=id;
+ for(const [key,inputId] of Object.entries(fields[type]))$(inputId).value=r[key]||'';
+ $(type+'-edit-banner').hidden=false;
+ $(type+'-cancel').hidden=false;
+ $(type+'-save').textContent='変更を保存する';
+ tab(type==='trip'?1:2);
+ $(type+'-edit-banner').scrollIntoView({behavior:'smooth',block:'center'});
+};
+window.deleteRecord=async function(id){
+ if(!currentUser||busy)return;
+ const r=records.find(x=>x.id===id);if(!r)return;
+ if(!confirm('「'+(r.date||'日付なし')+' / '+(r.kind||'記録')+'」をクラウドから完全に削除する？\n※元には戻せません。'))return;
+ busy=true;setEnabled(false);
+ try{
+  await deleteDoc(doc(db,'records',id));
+  if(editing[r.type]===id)cancelEdit(r.type);
+  alert('クラウドから削除したぞ。');
+ }catch(e){alert('削除できませんでした：'+e.code);}
+ finally{busy=false;setEnabled(!!currentUser);}
+};
+function render(){
+ $('count').textContent=records.length+' 件';
+ for(const [rootId,type] of [['trips','trip'],['events','nature']]){
+  const root=$(rootId);root.replaceChildren();
+  for(const r of records.filter(x=>x.type===type)){
+   const d=document.createElement('div');d.className='item';
+   const content=document.createElement('div');
+   content.textContent=(r.date||'')+' / '+(r.kind||'')+(r.result?' / '+r.result:'')+'\n観察：'+(r.fact||'')+'\n仮説：'+(r.hyp||'なし');
+   d.appendChild(content);
+   const actions=document.createElement('div');actions.className='item-actions';
+   const edit=document.createElement('button');edit.className='small-action';edit.textContent='✏️ 編集';edit.onclick=()=>editRecord(r.id);
+   const del=document.createElement('button');del.className='small-action danger';del.textContent='🗑️ 削除';del.onclick=()=>deleteRecord(r.id);
+   edit.disabled=del.disabled=!currentUser||busy;
+   actions.append(edit,del);d.appendChild(actions);root.appendChild(d);
+  }
+ }
+}
+$('date').value=new Date().toLocaleDateString('sv-SE');
+$('edate').value=$('date').value;
+render();
+</script>
+</body>
+</html>
