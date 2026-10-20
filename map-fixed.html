@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>奄美GTフィールドノート | 地図修正テスト</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; color: #ecf5ff; background: #091b29; font-family: sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .hint { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: #bdd5e5; }
+    #map { position: relative; display: block; width: 100%; height: 62vh; min-height: 340px; max-height: 670px; border: 2px solid #476b7c; border-radius: 10px; background: #dde4e6; overflow: hidden; }
+    .panel { margin-top: 15px; padding: 14px; background: #163344; border-radius: 10px; }
+    .caption { font-size: 13px; color: #bdd5e5; }
+    #coords { margin: 8px 0 14px; font-size: 17px; overflow-wrap: anywhere; }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; }
+    button { padding: 12px 15px; color: #062b2b; background: #49d4b3; font-weight: bold; border: 0; border-radius: 8px; font-size: 14px; }
+    button:disabled { opacity: .45; }
+    #status { font-size: 12px; margin-top: 12px; color: #aed7e8; }
+
+    /* Leaflet の基本配置CSS。外部CSSが読み込めない場合の表示崩れ対策。 */
+    .leaflet-container { overflow: hidden; position: relative; outline: 0; font: 12px/1.5 sans-serif; }
+    .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+    .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+    .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+      position: absolute; left: 0; top: 0;
+    }
+    .leaflet-container img.leaflet-tile, .leaflet-container img.leaflet-marker-icon,
+    .leaflet-container img.leaflet-marker-shadow { max-width: none !important; max-height: none !important; }
+    .leaflet-tile { visibility: hidden; }
+    .leaflet-tile-loaded { visibility: inherit; }
+    .leaflet-zoom-animated { transform-origin: 0 0; }
+    .leaflet-pane { z-index: 400; }
+    .leaflet-tile-pane { z-index: 200; }
+    .leaflet-overlay-pane { z-index: 400; }
+    .leaflet-shadow-pane { z-index: 500; }
+    .leaflet-marker-pane { z-index: 600; }
+    .leaflet-tooltip-pane { z-index: 650; }
+    .leaflet-popup-pane { z-index: 700; }
+    .leaflet-map-pane canvas { z-index: 100; }
+    .leaflet-map-pane svg { z-index: 200; }
+    .leaflet-control { position: relative; z-index: 800; pointer-events: auto; }
+    .leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+    .leaflet-top { top: 0; } .leaflet-bottom { bottom: 0; }
+    .leaflet-left { left: 0; } .leaflet-right { right: 0; }
+    .leaflet-top .leaflet-control { margin-top: 10px; }
+    .leaflet-bottom .leaflet-control { margin-bottom: 10px; }
+    .leaflet-left .leaflet-control { margin-left: 10px; }
+    .leaflet-right .leaflet-control { margin-right: 10px; }
+    .leaflet-left .leaflet-control { float: left; clear: both; }
+    .leaflet-right .leaflet-control { float: right; clear: both; }
+    .leaflet-container .leaflet-control-attribution { background: rgba(255,255,255,.85); padding: 0 4px; color: #333; }
+    .leaflet-container .leaflet-control-attribution a { color: #0876ba; }
+  </style>
+</head>
+<body>
+  <h1>🎣 奄美GTフィールドノート</h1>
+  <p class="hint">地図修正テスト v0.2。地図をタップするとピンが立つ！ ※まだクラウドには保存されません。</p>
+  <div id="map" aria-label="奄美大島の地図"></div>
+  <div class="panel">
+    <div class="caption">選択した場所の座標</div>
+    <div id="coords">地図をタップしてね</div>
+    <div class="actions">
+      <button id="copyBtn" disabled>📋 座標をコピー</button>
+      <button id="clearBtn" disabled>✕ ピンを消す</button>
+    </div>
+    <div id="status">地図を準備しています…</div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function () {
+      var statusEl = document.getElementById('status');
+      var coordsEl = document.getElementById('coords');
+      var copyBtn = document.getElementById('copyBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var selected = '';
+      var marker = null;
+      if (!window.L) {
+        statusEl.textContent = '地図ライブラリが読み込めません。通信状態を確認してください。';
+        return;
+      }
+      var map = L.map('map', { zoomControl: true }).setView([28.34, 129.50], 10);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      map.on('click', function (e) {
+        selected = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+        if (marker) { map.removeLayer(marker); }
+        marker = L.circleMarker(e.latlng, {
+          radius: 10, color: '#ffffff', weight: 3, fillColor: '#ef3939', fillOpacity: 1
+        }).addTo(map);
+        coordsEl.textContent = selected;
+        copyBtn.disabled = false;
+        clearBtn.disabled = false;
+        statusEl.textContent = '✅ ピン設置成功！';
+      });
+      copyBtn.addEventListener('click', function () {
+        if (!selected) { return; }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(selected).then(function () {
+            statusEl.textContent = '📋 座標をコピーしました';
+          }, function () { statusEl.textContent = '座標: ' + selected; });
+        } else {
+          statusEl.textContent = '座標: ' + selected;
+        }
+      });
+      clearBtn.addEventListener('click', function () {
+        if (marker) { map.removeLayer(marker); marker = null; }
+        selected = '';
+        coordsEl.textContent = '地図をタップしてね';
+        copyBtn.disabled = true;
+        clearBtn.disabled = true;
+        statusEl.textContent = 'ピンを消しました';
+      });
+      setTimeout(function () { map.invalidateSize(); statusEl.textContent = '✅ 地図の準備OK。地図をタップしてね！'; }, 500);
+    })();
+  </script>
+</body>
+</html>
