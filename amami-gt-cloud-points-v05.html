@@ -1,0 +1,605 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>奄美GTフィールドノート</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#071b28;color:#eef8fc;font-family:system-ui,sans-serif}
+header{background:#10364b;padding:22px 16px;text-align:center}
+h1{font-size:23px;margin:0}
+small{color:#a6c9d5}
+nav{display:flex;background:#092a3b;position:sticky;top:0}
+nav button{flex:1;padding:15px 2px;border:0;background:transparent;color:#b7d1dd;font-weight:bold}
+nav button.on{color:#66e3c0;border-bottom:3px solid #66e3c0}
+main{padding:16px;max-width:650px;margin:auto}
+section{display:none}
+section.on{display:block}
+.card{background:#123548;border:1px solid #28546a;border-radius:14px;padding:16px;margin:12px 0}
+h2{font-size:19px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0 12px;background:#eaf5f7;color:#102a39;border:0;border-radius:8px;font-size:16px}
+textarea{min-height:85px}
+label{font-size:14px}
+.action{background:#42d6b0;color:#062e2b;border:0;border-radius:9px;padding:13px 18px;font-weight:bold}
+.note{color:#b5ced7;font-size:13px}
+.item{border-bottom:1px solid #335668;padding:12px 0;white-space:pre-wrap}
+.item-actions{display:flex;gap:8px;margin-top:10px}
+.small-action{border:1px solid #78b8cb;background:#19495c;color:white;border-radius:8px;padding:9px 14px}
+.small-action.danger{border-color:#e8a3a3;color:#ffd6d6}
+.edit-banner{color:#8cf1d1;font-weight:bold;margin:6px 0}
+button:disabled{opacity:.5}
+[hidden]{display:none!important}
+.map-tools{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.map-tools button{font-size:14px}
+#trip-map,#point-map{position:relative;display:block;width:100%;height:55vh;min-height:320px;max-height:620px;background:#dce5e8;border:2px solid #47738a;border-radius:12px;overflow:hidden}
+#trip-map-wrapper,#point-map-wrapper{margin:12px 0}
+.coord{font-weight:600;color:#a0f4da;overflow-wrap:anywhere}
+.item-meta{color:#b5ced7;font-size:13px;margin-top:4px}
+.item-actions{flex-wrap:wrap}
+nav button{font-size:13px}
+#trip-point-status{font-weight:600;color:#a0f4da;overflow-wrap:anywhere}
+.map-caption{font-size:12px;color:#b9d7e5}
+    /* Leaflet の基本配置CSS。外部CSSが読み込めない場合の表示崩れ対策。 */
+    .leaflet-container { overflow: hidden; position: relative; outline: 0; font: 12px/1.5 sans-serif; }
+    .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+    .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+    .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+      position: absolute; left: 0; top: 0;
+    }
+    .leaflet-container img.leaflet-tile, .leaflet-container img.leaflet-marker-icon,
+    .leaflet-container img.leaflet-marker-shadow { max-width: none !important; max-height: none !important; }
+    .leaflet-tile { visibility: hidden; }
+    .leaflet-tile-loaded { visibility: inherit; }
+    .leaflet-zoom-animated { transform-origin: 0 0; }
+    .leaflet-pane { z-index: 400; }
+    .leaflet-tile-pane { z-index: 200; }
+    .leaflet-overlay-pane { z-index: 400; }
+    .leaflet-shadow-pane { z-index: 500; }
+    .leaflet-marker-pane { z-index: 600; }
+    .leaflet-tooltip-pane { z-index: 650; }
+    .leaflet-popup-pane { z-index: 700; }
+    .leaflet-map-pane canvas { z-index: 100; }
+    .leaflet-map-pane svg { z-index: 200; }
+    .leaflet-control { position: relative; z-index: 800; pointer-events: auto; }
+    .leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+    .leaflet-top { top: 0; } .leaflet-bottom { bottom: 0; }
+    .leaflet-left { left: 0; } .leaflet-right { right: 0; }
+    .leaflet-top .leaflet-control { margin-top: 10px; }
+    .leaflet-bottom .leaflet-control { margin-bottom: 10px; }
+    .leaflet-left .leaflet-control { margin-left: 10px; }
+    .leaflet-right .leaflet-control { margin-right: 10px; }
+    .leaflet-left .leaflet-control { float: left; clear: both; }
+    .leaflet-right .leaflet-control { float: right; clear: both; }
+    .leaflet-container .leaflet-control-attribution { background: rgba(255,255,255,.85); padding: 0 4px; color: #333; }
+    .leaflet-container .leaflet-control-attribution a { color: #0876ba; }
+
+</style>
+</head>
+<body>
+<header>
+<h1>🎣 奄美GTフィールドノート</h1>
+<small>親子GT研究所 / クラウド記録 v0.5（独立ポイント台帳）</small>
+</header>
+<nav>
+<button class="on" onclick="tab(0)">ホーム</button>
+<button onclick="tab(1)">ポイント</button>
+<button onclick="tab(2)">釣行</button>
+<button onclick="tab(3)">自然観察</button>
+</nav>
+<main>
+<div class="card" id="auth-panel">
+<h2>🔐 クラウド接続</h2>
+<p id="auth-status">接続準備中…</p>
+<button class="action" id="login-button" disabled>Googleでログイン</button>
+<button class="action" id="logout-button" hidden>ログアウト</button>
+<p class="note">許可されたアカウントだけが記録を閲覧・保存できます。初回はテスト用の架空データで試してね。</p>
+</div>
+<section class="on">
+<h2>🌊 調査ダッシュボード</h2>
+<div class="card">
+<h2>GTを探す、その理由を探す。</h2>
+<p>山・川・浜・インリーフ・沖合。</p>
+<p>釣果だけでなく、ノーバイトや自然の変化も記録する研究ノート。</p>
+</div>
+<div class="card">
+<h2>🗺️ ポイント管理</h2>
+<p>立ち位置ごとにポイントを登録し、釣行履歴をひも付けられます。</p>
+<p id="point-count">登録ポイント：0 件</p>
+<p class="note">ポイントの座標はHTMLには書かず、許可されたアカウントのFirestoreから取得します。以前の釣行記録は書き換えません。</p>
+</div>
+<div class="card">
+<h2>📊 記録件数</h2>
+<p id="count">0 件</p>
+</div>
+</section>
+<section>
+<h2>📍 ポイント台帳</h2>
+<div class="card">
+<p class="note">同じ岬でも東側・西側など立ち位置ごとに登録。まずは架空のテストポイントで試そう。</p>
+<label>ポイント名（立ち位置が分かる名前）</label>
+<input id="point-name" placeholder="例：テスト岬・東側">
+<label>エリア名（任意）</label>
+<input id="point-area" placeholder="例：テスト岬">
+<label>地形・ポイント種別</label>
+<select id="point-type">
+<option>インリーフ</option><option>地磯</option><option>河口</option><option>砂浜・海岸</option><option>堤防</option><option>その他</option>
+</select>
+<label>アクセス・足場・特徴（任意）</label>
+<textarea id="point-notes" placeholder="徒歩での入り方、立ち位置の特徴など。個人情報は書かないでね。"></textarea>
+<div class="map-tools">
+<button type="button" class="small-action" id="point-map-toggle">🗺️ 地図で立ち位置を決める</button>
+<button type="button" class="small-action danger" id="point-map-clear" hidden>✕ 座標を外す</button>
+</div>
+<p id="point-coordinate-status" class="coord">📍 座標は未選択</p>
+<div id="point-map-wrapper" hidden>
+ <p class="map-caption">地図をタップして赤いピンを置こう。青いピンはすでに登録したポイント。</p>
+ <div id="point-map" aria-label="ポイント管理地図"></div>
+ <p id="point-map-message" class="map-caption">地図を読み込みます…</p>
+</div>
+<p class="edit-banner" id="point-edit-banner" hidden>✏️ このポイントを編集中</p>
+<button class="action" id="point-save" onclick="savePoint()">ポイントを登録する</button>
+<button class="small-action" id="point-cancel" onclick="cancelPointEdit()" hidden>編集をやめる</button>
+</div>
+<h2>登録済みポイント</h2>
+<div id="points-list"></div>
+<p class="note">ポイント台帳は釣行と別のクラウド保存領域です。過去の釣行は自動では結び付けず、釣行の編集画面から選べます。ポイントの座標を変更しても過去の釣行座標は書き換えません。</p>
+</section>
+<section>
+<h2>🐟 釣行記録</h2>
+<div class="card">
+<label>釣行日</label><input type="date" id="date">
+<label>登録済みポイントを使う（任意）</label>
+<select id="trip-point-select"><option value="">登録ポイントを使わない</option></select>
+<p id="trip-linked-status" class="note">ポイント台帳との関連付けなし。地図から直接指定してもOK。</p>
+<label>場所の名前</label><input id="place" placeholder="例：テストポイント（仮名でもOK）">
+<div class="map-tools">
+<button type="button" class="small-action" id="trip-map-toggle">🗺️ 地図から場所を選ぶ</button>
+<button type="button" class="small-action danger" id="trip-map-clear" hidden>✕ 座標を外す</button>
+</div>
+<p id="trip-point-status" class="note">📍 座標は未選択</p>
+<div id="trip-map-wrapper" hidden>
+ <p class="map-caption">地図をタップすると赤いピンが移動するよ。釣行を保存した時だけ座標をクラウドに記録します。</p>
+ <div id="trip-map" aria-label="奄美大島の釣り場選択地図"></div>
+ <p id="trip-map-message" class="map-caption">地図を読み込みます…</p>
+</div>
+<label>釣果</label>
+<select id="result">
+<option>ノーバイト</option>
+<option>バイトあり・釣果なし</option>
+<option>キャッチ</option>
+<option>魚を目撃</option>
+</select>
+<label>観察した事実</label>
+<textarea id="fact" placeholder="風、潮、ベイト、魚の反応など"></textarea>
+<label>考えた仮説</label>
+<textarea id="hyp" placeholder="なぜ反応したのか？"></textarea>
+<p class="edit-banner" id="trip-edit-banner" hidden>✏️ この釣行記録を編集中</p>
+<button class="action" id="trip-save" onclick="save('trip')">記録する</button>
+<button class="small-action" id="trip-cancel" onclick="cancelEdit('trip')" hidden>編集をやめる</button>
+</div>
+<h2>保存した釣行</h2>
+<div id="trip-filter-banner" class="card" hidden><span id="trip-filter-text"></span> <button class="small-action" id="trip-filter-clear" type="button">全件表示に戻す</button></div>
+<div id="trips"></div>
+</section>
+<section>
+<h2>🦀 自然イベント</h2>
+<div class="card">
+<p>季節ごとに調べたいテーマ</p>
+<p>🐟 秋のシイラ回遊</p>
+<p>🐠 春のベイト接岸・ミジュン</p>
+<p>🦀 満月期のカニの移動</p>
+<p>🐚 8月大潮のヤドカリ</p>
+<p>🐢 ウミガメの行動・孵化</p>
+</div>
+<div class="card">
+<label>観察日</label><input type="date" id="edate">
+<label>イベント</label>
+<select id="event">
+<option>シイラ</option>
+<option>ミジュン・ベイト</option>
+<option>カニ</option>
+<option>ヤドカリ</option>
+<option>ウミガメ</option>
+<option>その他</option>
+</select>
+<label>観察した事実</label>
+<textarea id="observation"></textarea>
+<label>仮説・気づき</label>
+<textarea id="idea"></textarea>
+<p class="edit-banner" id="nature-edit-banner" hidden>✏️ この自然観察を編集中</p>
+<button class="action" id="nature-save" onclick="save('nature')">記録する</button>
+<button class="small-action" id="nature-cancel" onclick="cancelEdit('nature')" hidden>編集をやめる</button>
+</div>
+<h2>保存した観察</h2>
+<div id="events"></div>
+</section>
+<p class="note">Firebaseクラウド版です。ポイントは「points」、釣行・自然観察は従来の「records」に別々に保存します。元のデータは自動移行・自動変更されません。親子共有には息子さんのUIDをFirestoreルールへ安全に追加する必要があります。</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import {getFirestore,collection,addDoc,doc,updateDoc,deleteDoc,query,orderBy,onSnapshot,serverTimestamp,deleteField} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+const firebaseConfig={
+ apiKey:'AIzaSyBMYQ1zE0dIMpXxq2DoI9sjO1gnyxVsKWc',
+ authDomain:'amami-gt-fieild-note.firebaseapp.com',
+ projectId:'amami-gt-fieild-note',
+ storageBucket:'amami-gt-fieild-note.firebasestorage.app',
+ messagingSenderId:'216227273807',
+ appId:'1:216227273807:web:e45e98bb8d8923154a9e3a'
+};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const buttons=document.querySelectorAll('#trip-save,#nature-save,#point-save');
+let records=[];
+let points=[];
+let stopListening=null;
+let stopPointsListening=null;
+let currentUser=null;
+let editing={trip:null,nature:null};
+let busy=false;
+let selectedTripPoint=null;
+let tripMap=null;
+let tripMarker=null;
+let selectedTripPointId=null;
+let selectedRegistryPoint=null;
+let registryMap=null;
+let registryMarker=null;
+let registryPins=null;
+let editingPointId=null;
+let tripFilterPointId=null;
+function validPoint(p){return p && typeof p.lat==='number' && typeof p.lng==='number' && Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.lat>=-90 && p.lat<=90 && p.lng>=-180 && p.lng<=180;}
+function formatPoint(p){return p.lat.toFixed(6)+', '+p.lng.toFixed(6);}
+function updatePointDisplay(){
+ $('trip-point-status').textContent=validPoint(selectedTripPoint)?'📍 選択中：'+formatPoint(selectedTripPoint):'📍 座標は未選択';
+ $('trip-map-clear').hidden=!validPoint(selectedTripPoint);
+ if(tripMap){
+  if(tripMarker){tripMap.removeLayer(tripMarker);tripMarker=null;}
+  if(validPoint(selectedTripPoint))tripMarker=L.circleMarker([selectedTripPoint.lat,selectedTripPoint.lng],{radius:10,color:'#ffffff',weight:3,fillColor:'#ef3939',fillOpacity:1}).addTo(tripMap);
+ }
+}
+function setPoint(point){
+ selectedTripPoint=validPoint(point)?{lat:point.lat,lng:point.lng}:null;
+ updatePointDisplay();
+ if(tripMap && validPoint(selectedTripPoint))tripMap.panTo([selectedTripPoint.lat,selectedTripPoint.lng]);
+}
+function setupMap(){
+ if(tripMap)return true;
+ if(!window.L){$('trip-map-message').textContent='地図の読み込みに失敗しました。通信を確認して再読み込みしてね。';return false;}
+ try{
+  tripMap=L.map('trip-map',{zoomControl:true}).setView([28.34,129.50],10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(tripMap);
+  tripMap.on('click',event=>{
+   selectedTripPointId=null;
+   $('trip-point-select').value='';
+   setPoint({lat:Number(event.latlng.lat.toFixed(6)),lng:Number(event.latlng.lng.toFixed(6))});
+   updateTripLinkedStatus();
+   $('trip-map-message').textContent='✅ ピンを選択！ 記録ボタンを押すとクラウドに保存されるよ。';
+  });
+  updatePointDisplay();
+  return true;
+ }catch(e){$('trip-map-message').textContent='地図を表示できませんでした。再読み込みしてね。';return false;}
+}
+function openTripMap(){
+ $('trip-map-wrapper').hidden=false;
+ $('trip-map-toggle').textContent='🗺️ 地図を閉じる';
+ if(setupMap()){
+  // Map starts inside a hidden tab/panel: recalculate size after it becomes visible.
+  setTimeout(()=>{tripMap.invalidateSize();if(validPoint(selectedTripPoint))tripMap.setView([selectedTripPoint.lat,selectedTripPoint.lng],Math.max(11,tripMap.getZoom()));},220);
+ }
+}
+$('trip-map-toggle').addEventListener('click',()=>{
+ if($('trip-map-wrapper').hidden){openTripMap();}
+ else{$('trip-map-wrapper').hidden=true;$('trip-map-toggle').textContent='🗺️ 地図から場所を選ぶ';}
+});
+$('trip-map-clear').addEventListener('click',()=>{
+ selectedTripPointId=null;$('trip-point-select').value='';setPoint(null);updateTripLinkedStatus();
+});
+function updateTripLinkedStatus(){
+ const p=points.find(x=>x.id===selectedTripPointId);
+ $('trip-linked-status').textContent=p?'✅ 台帳ポイント「'+p.name+'」に関連付け中':'ポイント台帳との関連付けなし。地図から直接指定してもOK。';
+}
+function refreshTripPointSelect(){
+ const select=$('trip-point-select');
+ select.replaceChildren();
+ const empty=document.createElement('option');empty.value='';empty.textContent='登録ポイントを使わない';select.appendChild(empty);
+ for(const p of points){
+  const option=document.createElement('option');option.value=p.id;
+  option.textContent=p.name+(p.area?' / '+p.area:'');select.appendChild(option);
+ }
+ select.value=points.some(p=>p.id===selectedTripPointId)?selectedTripPointId:'';
+ updateTripLinkedStatus();
+}
+$('trip-point-select').addEventListener('change',()=>{
+ selectedTripPointId=$('trip-point-select').value||null;
+ const p=points.find(x=>x.id===selectedTripPointId);
+ if(p){$('place').value=p.name;setPoint(p.point);}
+ else{setPoint(null);}
+ updateTripLinkedStatus();
+});
+function updateRegistryPointDisplay(){
+ $('point-coordinate-status').textContent=validPoint(selectedRegistryPoint)?'📍 選択中：'+formatPoint(selectedRegistryPoint):'📍 座標は未選択';
+ $('point-map-clear').hidden=!validPoint(selectedRegistryPoint);
+ if(registryMap){
+  if(registryMarker){registryMap.removeLayer(registryMarker);registryMarker=null;}
+  if(validPoint(selectedRegistryPoint)){
+   registryMarker=L.circleMarker([selectedRegistryPoint.lat,selectedRegistryPoint.lng],{radius:10,color:'#fff',weight:3,fillColor:'#ef3939',fillOpacity:1}).addTo(registryMap);
+  }
+ }
+}
+function setRegistryPoint(p){
+ selectedRegistryPoint=validPoint(p)?{lat:p.lat,lng:p.lng}:null;
+ updateRegistryPointDisplay();
+ if(registryMap&&validPoint(selectedRegistryPoint))registryMap.panTo([selectedRegistryPoint.lat,selectedRegistryPoint.lng]);
+}
+function updateRegistryPins(){
+ if(!registryMap||!registryPins)return;
+ registryPins.clearLayers();
+ for(const p of points){
+  if(!validPoint(p.point))continue;
+  const marker=L.circleMarker([p.point.lat,p.point.lng],{radius:7,color:'#fff',weight:2,fillColor:'#287cd6',fillOpacity:.9}).addTo(registryPins);
+  const popup=document.createElement('div');popup.textContent=p.name+(p.area?' / '+p.area:'');marker.bindPopup(popup);
+ }
+}
+function setupRegistryMap(){
+ if(registryMap)return true;
+ if(!window.L){$('point-map-message').textContent='地図を読み込めませんでした。通信を確認してね。';return false;}
+ try{
+  registryMap=L.map('point-map',{zoomControl:true}).setView([28.34,129.50],10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(registryMap);
+  registryPins=L.layerGroup().addTo(registryMap);
+  registryMap.on('click',event=>{
+   setRegistryPoint({lat:Number(event.latlng.lat.toFixed(6)),lng:Number(event.latlng.lng.toFixed(6))});
+   $('point-map-message').textContent='✅ 赤いピンを選択。ポイント登録でクラウドへ保存するよ。';
+  });
+  updateRegistryPins();updateRegistryPointDisplay();return true;
+ }catch(e){$('point-map-message').textContent='地図を表示できませんでした。再読み込みしてね。';return false;}
+}
+$('point-map-toggle').addEventListener('click',()=>{
+ if(!$('point-map-wrapper').hidden){
+  $('point-map-wrapper').hidden=true;$('point-map-toggle').textContent='🗺️ 地図で立ち位置を決める';return;
+ }
+ $('point-map-wrapper').hidden=false;$('point-map-toggle').textContent='🗺️ 地図を閉じる';
+ if(setupRegistryMap())setTimeout(()=>{
+  registryMap.invalidateSize();
+  if(validPoint(selectedRegistryPoint))registryMap.setView([selectedRegistryPoint.lat,selectedRegistryPoint.lng],Math.max(11,registryMap.getZoom()));
+ },220);
+});
+$('point-map-clear').addEventListener('click',()=>setRegistryPoint(null));
+function pointTripCount(id){return records.filter(r=>r.type==='trip'&&r.pointId===id).length;}
+function renderPoints(){
+ $('point-count').textContent='登録ポイント：'+points.length+' 件';
+ const root=$('points-list');root.replaceChildren();
+ if(!points.length){
+  const hint=document.createElement('p');hint.className='note';hint.textContent='登録されたポイントはまだありません。';root.appendChild(hint);
+ }
+ for(const p of points){
+  const d=document.createElement('div');d.className='item';
+  const text=document.createElement('div');
+  text.textContent='📍 '+p.name+(p.area?' / '+p.area:'')+' / '+(p.pointType||'未分類')+'\n座標：'+(validPoint(p.point)?formatPoint(p.point):'なし')+'\nメモ：'+(p.notes||'なし');
+  d.appendChild(text);
+  const count=document.createElement('div');count.className='item-meta';count.textContent='ひも付いた釣行：'+pointTripCount(p.id)+'件';d.appendChild(count);
+  const actions=document.createElement('div');actions.className='item-actions';
+  const mkButton=(title,click,danger=false)=>{
+   const b=document.createElement('button');b.className='small-action'+(danger?' danger':'');b.textContent=title;b.onclick=click;b.disabled=!currentUser||busy;actions.appendChild(b);
+  };
+  mkButton('🎣 この場所で記録',()=>tripFromPoint(p.id));
+  mkButton('📖 履歴を見る',()=>filterTripsForPoint(p.id));
+  mkButton('✏️ 編集',()=>editPoint(p.id));
+  mkButton('🗑️ 削除',()=>deletePoint(p.id),true);
+  d.appendChild(actions);root.appendChild(d);
+ }
+ refreshTripPointSelect();
+ updateRegistryPins();
+}
+function tripFromPoint(id){
+ const p=points.find(x=>x.id===id);if(!p)return;
+ if(editing.trip&&!confirm('編集中の釣行を中止して新規記録にする？'))return;
+ cancelEdit('trip');
+ selectedTripPointId=id;refreshTripPointSelect();$('place').value=p.name;setPoint(p.point);
+ tripFilterPointId=null;render();tab(2);
+ $('trip-point-select').scrollIntoView({block:'center',behavior:'smooth'});
+}
+function filterTripsForPoint(id){
+ tripFilterPointId=id;render();tab(2);
+ $('trip-filter-banner').scrollIntoView({block:'center',behavior:'smooth'});
+}
+$('trip-filter-clear').addEventListener('click',()=>{tripFilterPointId=null;render();});
+window.cancelPointEdit=function(){
+ editingPointId=null;
+ $('point-name').value='';$('point-area').value='';$('point-type').selectedIndex=0;$('point-notes').value='';
+ setRegistryPoint(null);
+ $('point-map-wrapper').hidden=true;$('point-map-toggle').textContent='🗺️ 地図で立ち位置を決める';
+ $('point-edit-banner').hidden=true;$('point-cancel').hidden=true;$('point-save').textContent='ポイントを登録する';
+};
+window.savePoint=async function(){
+ if(!currentUser||busy){if(!currentUser)alert('先にログインしてね');return;}
+ const name=$('point-name').value.trim();
+ if(!name||!validPoint(selectedRegistryPoint)){alert('ポイント名と地図上の座標を指定してね。');return;}
+ const data={name,area:$('point-area').value.trim(),pointType:$('point-type').value,notes:$('point-notes').value.trim(),point:{...selectedRegistryPoint}};
+ busy=true;setEnabled(false);
+ try{
+  if(editingPointId){
+   await updateDoc(doc(db,'points',editingPointId),{...data,updatedAt:serverTimestamp(),updatedBy:currentUser.uid});
+   alert('ポイントを更新したぞ！');
+  }else{
+   await addDoc(collection(db,'points'),{...data,createdAt:serverTimestamp(),createdBy:currentUser.uid});
+   alert('ポイント台帳に登録したぞ！');
+  }
+  cancelPointEdit();
+ }catch(e){alert('ポイントを保存できませんでした：'+(e.code||e.message));}
+ finally{busy=false;setEnabled(!!currentUser);renderPoints();}
+};
+window.editPoint=function(id){
+ const p=points.find(x=>x.id===id);if(!p||!currentUser||busy)return;
+ editingPointId=id;
+ $('point-name').value=p.name||'';$('point-area').value=p.area||'';
+ $('point-type').value=p.pointType||'その他';$('point-notes').value=p.notes||'';
+ setRegistryPoint(p.point);
+ $('point-edit-banner').hidden=false;$('point-cancel').hidden=false;$('point-save').textContent='変更を保存する';
+ tab(1);$('point-edit-banner').scrollIntoView({behavior:'smooth',block:'center'});
+};
+window.deletePoint=async function(id){
+ if(!currentUser||busy)return;
+ const p=points.find(x=>x.id===id);if(!p)return;
+ const n=pointTripCount(id);
+ if(n){alert('このポイントには釣行記録が'+n+'件あります。先に釣行の関連付けを変更してね。記録保護のため削除できません。');return;}
+ if(!confirm('ポイント「'+p.name+'」を完全に削除する？\n※元には戻せません。'))return;
+ busy=true;setEnabled(false);
+ try{
+  await deleteDoc(doc(db,'points',id));
+  if(editingPointId===id)cancelPointEdit();
+  alert('ポイントを削除したぞ。');
+ }catch(e){alert('ポイントを削除できませんでした：'+(e.code||e.message));}
+ finally{busy=false;setEnabled(!!currentUser);renderPoints();}
+};
+function status(message){$('auth-status').textContent=message;}
+function setEnabled(enabled){buttons.forEach(b=>b.disabled=!enabled);document.querySelectorAll('.item-actions button').forEach(b=>b.disabled=!enabled);}
+setEnabled(false);
+window.tab=function(n){
+ document.querySelectorAll('main section').forEach((e,i)=>e.classList.toggle('on',i===n));
+ document.querySelectorAll('nav button').forEach((e,i)=>e.classList.toggle('on',i===n));
+};
+$('login-button').disabled=false;
+$('login-button').onclick=async()=>{
+ try{
+  $('login-button').disabled=true;
+  await signInWithPopup(auth,new GoogleAuthProvider());
+ }catch(e){status('ログイン失敗: '+e.code+'（ブラウザのポップアップ設定も確認）');}
+ finally{$('login-button').disabled=false;}
+};
+$('logout-button').onclick=()=>signOut(auth);
+onAuthStateChanged(auth,user=>{
+ if(stopListening){stopListening();stopListening=null;}
+ if(stopPointsListening){stopPointsListening();stopPointsListening=null;}
+ currentUser=user;
+ records=[];points=[];tripFilterPointId=null;cancelEdit('trip');cancelEdit('nature');cancelPointEdit();render();renderPoints();
+ $('login-button').hidden=!!user;
+ $('logout-button').hidden=!user;
+ setEnabled(!!user);
+ if(!user){status('未ログイン。Googleでログインしてください。');return;}
+ status('ログイン済み。クラウドの記録を確認中…');
+ const q=query(collection(db,'records'),orderBy('createdAt','desc'));
+ stopListening=onSnapshot(q,snapshot=>{
+  records=snapshot.docs.map(d=>({id:d.id,...d.data()}));render();renderPoints();
+  status('ログイン済み：'+(user.displayName||user.email||'ユーザー')+' ／ クラウド同期中（'+records.length+'件）');
+ },error=>{status('クラウド読込エラー：'+error.code+'。FirestoreルールのUIDを確認してね。');setEnabled(false);});
+ const pq=query(collection(db,'points'),orderBy('createdAt','desc'));
+ stopPointsListening=onSnapshot(pq,snapshot=>{
+  points=snapshot.docs.map(d=>({id:d.id,...d.data()}));renderPoints();render();
+ },error=>{
+  status('ポイント読込エラー：'+error.code+'。Firestoreルールを確認してね。');
+  $('point-save').disabled=true;
+ });
+});
+const fields={trip:{date:'date',kind:'place',result:'result',fact:'fact',hyp:'hyp'},nature:{date:'edate',kind:'event',fact:'observation',hyp:'idea'}};
+function collect(type){
+ const f=fields[type];const r={type};
+ for(const [key,id] of Object.entries(f))r[key]=$(id).value;
+ if(type==='trip'&&!r.kind.trim())r.kind='テスト地点';
+ if(type==='trip' && validPoint(selectedTripPoint))r.point={...selectedTripPoint};
+ if(type==='trip' && selectedTripPointId && points.some(p=>p.id===selectedTripPointId))r.pointId=selectedTripPointId;
+ return r;
+}
+function clearForm(type){
+ if(type==='trip'){
+  selectedTripPointId=null;refreshTripPointSelect();
+  setPoint(null);
+  $('trip-map-wrapper').hidden=true;
+  $('trip-map-toggle').textContent='🗺️ 地図から場所を選ぶ';
+ }
+ const f=fields[type];
+ for(const [key,id] of Object.entries(f)){
+  if(key==='date')$(id).value=new Date().toLocaleDateString('sv-SE');
+  else if($(id).tagName==='SELECT')$(id).selectedIndex=0;
+  else $(id).value='';
+ }
+}
+window.cancelEdit=function(type){
+ editing[type]=null;
+ $(type+'-edit-banner').hidden=true;
+ $(type+'-cancel').hidden=true;
+ $(type+'-save').textContent='記録する';
+ clearForm(type);
+};
+window.save=async function(type){
+ if(!currentUser||busy){if(!currentUser)alert('先にログインしてね');return;}
+ const r=collect(type);
+ if(!r.date||!r.fact.trim()){alert('日付と観察事実を入力してね');return;}
+ const id=editing[type];
+ busy=true;setEnabled(false);
+ try{
+  if(id){
+   await updateDoc(doc(db,'records',id),{...r,...(type==='trip'?{point:validPoint(selectedTripPoint)?{...selectedTripPoint}:deleteField(),pointId:r.pointId||deleteField()}:{}),updatedAt:serverTimestamp(),updatedBy:currentUser.uid});
+   alert('クラウドの記録を更新したぞ！ ✏️');
+  }else{
+   await addDoc(collection(db,'records'),{...r,createdAt:serverTimestamp(),createdBy:currentUser.uid});
+   alert('クラウドに記録したぞ！ 🎣');
+  }
+  cancelEdit(type);
+ }catch(e){alert('保存できませんでした：'+e.code+'。通信状態とルールを確認してね。');}
+ finally{busy=false;setEnabled(!!currentUser);}
+};
+window.editRecord=function(id){
+ if(!currentUser||busy)return;
+ const r=records.find(x=>x.id===id);if(!r||!fields[r.type])return;
+ const type=r.type;
+ if(editing[type]&&editing[type]!==id&&!confirm('編集中の内容を破棄して別の記録を編集する？'))return;
+ editing[type]=id;
+ for(const [key,inputId] of Object.entries(fields[type]))$(inputId).value=r[key]||'';
+ if(type==='trip'){
+  selectedTripPointId=r.pointId&&points.some(p=>p.id===r.pointId)?r.pointId:null;
+  refreshTripPointSelect();
+  setPoint(validPoint(r.point)?r.point:null);
+ }
+ $(type+'-edit-banner').hidden=false;
+ $(type+'-cancel').hidden=false;
+ $(type+'-save').textContent='変更を保存する';
+ tab(type==='trip'?2:3);
+ $(type+'-edit-banner').scrollIntoView({behavior:'smooth',block:'center'});
+};
+window.deleteRecord=async function(id){
+ if(!currentUser||busy)return;
+ const r=records.find(x=>x.id===id);if(!r)return;
+ if(!confirm('「'+(r.date||'日付なし')+' / '+(r.kind||'記録')+'」をクラウドから完全に削除する？\n※元には戻せません。'))return;
+ busy=true;setEnabled(false);
+ try{
+  await deleteDoc(doc(db,'records',id));
+  if(editing[r.type]===id)cancelEdit(r.type);
+  alert('クラウドから削除したぞ。');
+ }catch(e){alert('削除できませんでした：'+e.code);}
+ finally{busy=false;setEnabled(!!currentUser);}
+};
+function render(){
+ $('count').textContent=records.length+' 件';
+ const filterName=points.find(p=>p.id===tripFilterPointId)?.name||'未登録';
+ $('trip-filter-banner').hidden=!tripFilterPointId;
+ $('trip-filter-text').textContent='📖 '+filterName+' の釣行だけ表示中';
+ for(const [rootId,type] of [['trips','trip'],['events','nature']]){
+  const root=$(rootId);root.replaceChildren();
+  for(const r of records.filter(x=>x.type===type&&(type!=='trip'||!tripFilterPointId||x.pointId===tripFilterPointId))){
+   const d=document.createElement('div');d.className='item';
+   const content=document.createElement('div');
+   const linked=type==='trip'&&r.pointId?points.find(p=>p.id===r.pointId):null;
+   content.textContent=(r.date||'')+' / '+(r.kind||'')+(r.result?' / '+r.result:'')+'\n観察：'+(r.fact||'')+'\n仮説：'+(r.hyp||'なし')+(type==='trip'&&validPoint(r.point)?'\n📍 保存座標：'+formatPoint(r.point):'')+(linked?'\n🔗 台帳：'+linked.name:'');
+   d.appendChild(content);
+   const actions=document.createElement('div');actions.className='item-actions';
+   const edit=document.createElement('button');edit.className='small-action';edit.textContent='✏️ 編集';edit.onclick=()=>editRecord(r.id);
+   const del=document.createElement('button');del.className='small-action danger';del.textContent='🗑️ 削除';del.onclick=()=>deleteRecord(r.id);
+   edit.disabled=del.disabled=!currentUser||busy;
+   actions.append(edit,del);d.appendChild(actions);root.appendChild(d);
+  }
+ }
+}
+$('date').value=new Date().toLocaleDateString('sv-SE');
+$('edate').value=$('date').value;
+updatePointDisplay();updateRegistryPointDisplay();
+render();renderPoints();
+</script>
+</body>
+</html>
