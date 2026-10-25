@@ -1,0 +1,24 @@
+{
+  "name": "奄美GTフィールドノート",
+  "short_name": "奄美GT",
+  "description": "奄美大島GT釣行フィールドノート",
+  "start_url": "./amami-gt-cloud-manual-events-v0915.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#061b39",
+  "theme_color": "#061b39",
+  "icons": [
+    {
+      "src": "./amami-gt-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./amami-gt-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
