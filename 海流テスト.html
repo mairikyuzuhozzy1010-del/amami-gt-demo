@@ -9,7 +9,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map=L.map('map').setView([28.25,129.35],8);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:18}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors, HOT',maxZoom:18}).addTo(map);
 const layer=L.layerGroup().addTo(map);let records=[],source='';
 const $=id=>document.getElementById(id);
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
