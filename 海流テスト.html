@@ -1,15 +1,17 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>奄美GT 海流テスト v0.2</title>
+<title>奄美GT 海流テスト v0.3</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>body{margin:0;background:#071e2b;color:#e8f4f7;font:15px system-ui,sans-serif}header{padding:12px 16px;background:#10384a}h1{font-size:19px;margin:0}small{color:#bdd5df}.controls{padding:12px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}button,input{font:inherit;padding:8px;border-radius:7px;border:1px solid #698e9f}button{background:#1d6983;color:white}input{max-width:170px}#map{height:65vh;min-height:370px;background:#164357}.info{padding:12px 16px;line-height:1.6}.legend{background:#fff;color:#173847;padding:8px;border-radius:6px}.arrow{font-size:21px;color:#0068e1;text-shadow:0 0 3px white,0 0 3px white;transform-origin:center}.warn{color:#ffe49c}a{color:#8fe5ff}</style></head>
-<body><header><h1>🌊 奄美GT FIELD NOTE｜海流テスト v0.2</h1><small>独立検証ページ・Firebase接続なし・既存データには触れません</small></header>
+<body><header><h1>🌊 奄美GT FIELD NOTE｜海流テスト v0.3</h1><small>独立検証ページ・Firebase接続なし・既存データには触れません</small></header>
 <div class="controls"><label>対象日 <input type="date" id="day" value="2026-09-15"></label><button id="demo">表示テスト（架空データ）</button><label>実測・解析データJSON <input id="file" type="file" accept=".json,application/json"></label><button id="clear">消去</button></div>
 <div id="map"></div><div class="info"><strong id="status">実データ未読込。地図を準備しました。</strong><p class="warn">※「表示テスト」は矢印表示の動作確認専用。架空の流れであり、黒潮・実際の海況を示しません。</p><details><summary>JSONデータ仕様を見る</summary><pre>[{"date":"2026-09-15","lat":28.2,"lon":129.4,"u":0.3,"v":0.1,"sst":28.1}]</pre>u=東向き流速(m/s)、v=北向き流速(m/s)、sst=水温(℃・任意)。日付はYYYY-MM-DD。JSONは配列、または {"points":[...]} に対応。</details><p>資料：<a href="https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/services" target="_blank" rel="noopener">Copernicus Marine</a>。地図 © OpenStreetMap contributors。</p></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map=L.map('map').setView([28.25,129.35],8);
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri, Maxar, Earthstar Geographics',maxZoom:18}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap contributors © CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+const landPane=map.createPane('landOverlay');landPane.style.zIndex=350;landPane.style.pointerEvents='none';
+fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson').then(r=>{if(!r.ok)throw Error('coastline');return r.json()}).then(g=>{L.geoJSON(g,{pane:'landOverlay',style:{color:'#164b34',weight:2.5,fillColor:'#b9e58c',fillOpacity:0.83,opacity:1},interactive:false}).addTo(map)}).catch(()=>{$('status').textContent='海岸線強調データを読み込めませんでした。背景地図は利用できます。'});
 const layer=L.layerGroup().addTo(map);let records=[],source='';
 const $=id=>document.getElementById(id);
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
