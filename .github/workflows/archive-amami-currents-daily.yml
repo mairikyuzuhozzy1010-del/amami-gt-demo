@@ -1,0 +1,58 @@
+name: Archive Amami currents daily
+on:
+  schedule:
+    - cron: '23 0 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: amami-currents-archive
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Find missing daily snapshots
+        id: dates
+        shell: bash
+        run: |
+          days=()
+          for offset in 0 1 2; do
+            day=$(date -u -d "$offset days ago" +%F)
+            if [ ! -f "data/amami-currents-$day.json" ]; then
+              days+=("$day")
+            fi
+          done
+          echo "days=${days[*]}" >> "$GITHUB_OUTPUT"
+      - name: Install free data client
+        if: steps.dates.outputs.days != ''
+        run: pip install copernicusmarine numpy xarray netCDF4
+      - name: Fetch missing snapshots
+        if: steps.dates.outputs.days != ''
+        id: fetch
+        env:
+          TARGET_DAYS: ${{ steps.dates.outputs.days }}
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+        shell: bash
+        run: |
+          failed=0
+          for day in $TARGET_DAYS; do
+            python scripts/fetch_amami_currents_by_date.py "$day" || failed=1
+          done
+          exit "$failed"
+      - name: Preserve successful snapshots
+        if: "!cancelled() && (steps.fetch.outcome == 'success' || steps.fetch.outcome == 'failure')"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- data/amami-currents-*.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: archive daily Amami current snapshots"
+            git push
+          fi
