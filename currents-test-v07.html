@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>奄美GT 海流マップ v0.7</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>body{margin:0;background:#071e2b;color:#e8f4f7;font:15px system-ui,sans-serif}header{padding:12px 16px;background:#10384a}h1{font-size:19px;margin:0}small{color:#bdd5df}.controls{padding:12px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}button,input{font:inherit;padding:8px;border-radius:7px;border:1px solid #698e9f}button{background:#1d6983;color:white}input{max-width:170px}#map{height:65vh;min-height:370px;background:#164357}.info{padding:12px 16px;line-height:1.6}.legend{background:#fff;color:#173847;padding:8px;border-radius:6px}.arrow{font-size:21px;color:#0068e1;text-shadow:0 0 3px white,0 0 3px white;transform-origin:center}.warn{color:#ffe49c}a{color:#8fe5ff}.controls{padding:8px 12px;gap:6px}button,input{padding:8px;font-size:14px}.data-status{padding:7px 12px;background:#123346;border-top:1px solid #38586b;font-size:13px;line-height:1.45;min-height:2.9em;box-sizing:border-box}.data-status[data-state="error"]{color:#ffe49c}#map{height:68vh;min-height:320px}.legend{font-size:12px;line-height:1.25}.leaflet-control-attribution{max-width:calc(100vw - 12px);white-space:normal}</style></head>
+<body><header><h1>🌊 奄美GT FIELD NOTE｜海流テスト v0.7</h1><small>独立検証ページ・Firebase接続なし・既存データには触れません</small></header>
+<div class="controls"><label>対象日 <input type="date" id="day"></label><button id="live">指定日を読込</button><button id="today">今日</button><button id="prev">前日</button><button id="next">翌日</button><button id="photo">写真地図に切替</button></div>
+<div class="data-status" role="status" aria-live="polite" id="status">海流データを準備中…</div><div id="map"></div><div class="info"><p class="warn">※解析・予報を含む約9km格子の日平均モデル値（UTC日付）です。釣り座の局所的な潮流ではありません。写真は過去の背景画像であり、指定日の撮影画像ではありません。拡大すると矢印の表示点が増えます。</p><p>資料：<a href="https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/services" target="_blank" rel="noopener">Copernicus Marine</a>。Generated using E.U. Copernicus Marine Service Information; <a href="https://doi.org/10.48670/moi-00016">doi:10.48670/moi-00016</a>。地図：国土地理院。</p></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map',{maxZoom:18}).setView([28.25,129.35],8);
+map.getContainer().style.background='#168ac0';
+const credit='<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>';
+const normal=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{minZoom:5,maxZoom:18,attribution:credit}).addTo(map);
+const satellite=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/lndst/{z}/{x}/{y}.png',{maxNativeZoom:13,maxZoom:18,attribution:credit+' | Landsat8 (GSI, TSIC, GEO Grid/AIST), Landsat8 (courtesy of the U.S. Geological Survey), 海底地形 (GEBCO)'});
+const aerial=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{minZoom:14,maxZoom:18,attribution:credit+' | NASA/USGS Landsat-8, © Axelspace Corporation'});
+let photoMode=false;
+function syncPhoto(){if(photoMode){if(!map.hasLayer(satellite))satellite.addTo(map);if(map.getZoom()>=14){if(!map.hasLayer(aerial))aerial.addTo(map);}else map.removeLayer(aerial);}else{map.removeLayer(aerial);map.removeLayer(satellite);}}
+map.on('zoomend',syncPhoto);
+document.getElementById('photo').onclick=()=>{photoMode=!photoMode;syncPhoto();document.getElementById('photo').textContent=photoMode?'通常地図に切替':'写真地図に切替';};
+const layer=L.layerGroup().addTo(map);let records=[],source='',request=0;
+const $=id=>document.getElementById(id);
+const finite=n=>typeof n==='number'&&Number.isFinite(n);
+function setStatus(message,state){$('status').textContent=message;$('status').dataset.state=state;}
+function draw(){layer.clearLayers();const day=$('day').value;const items=records.filter(p=>p.date===day&&finite(p.lat)&&finite(p.lon)&&finite(p.u)&&finite(p.v)&&Math.abs(p.lat)<=90&&Math.abs(p.lon)<=180);
+const stride=map.getZoom()>=10?1:map.getZoom()===9?2:3;const shown=items.filter(p=>Math.round((p.lat-27)*12)%stride===0&&Math.round((p.lon-127)*12)%stride===0);
+const visible=shown.filter(p=>map.getBounds().pad(.15).contains([p.lat,p.lon]));
+for(const p of visible){const speed=Math.hypot(p.u,p.v),angle=(Math.atan2(p.u,p.v)*180/Math.PI+360)%360;
+const color=speed>=0.7?'#e44b35':speed>=0.35?'#d48a09':'#0875c7';
+const arrow=L.divIcon({className:'',html:'<div class="arrow" style="color:'+color+';transform:rotate('+angle+'deg)">↑</div>',iconSize:[24,24],iconAnchor:[12,12]});
+L.marker([p.lat,p.lon],{icon:arrow}).bindPopup('日付 '+day+'<br>流速 '+speed.toFixed(2)+' m/s<br>流向 '+angle.toFixed(0)+'°（北=0°・時計回り）'+(finite(p.sst)?'<br>水温 '+p.sst.toFixed(1)+'℃':'')+'<br>'+source).addTo(layer)}
+if(source)setStatus(day+'｜Copernicus Marine 日平均モデル｜'+visible.length+'点表示 / 全'+items.length+'点'+(visible.length?'':'（表示範囲内の点なし）'),'ok');
+}
+map.on('moveend',draw);
+$('day').addEventListener('change',loadLive);
+function dateShift(n){const d=new Date($('day').value+'T00:00:00Z');if(!Number.isFinite(d.getTime()))return;d.setUTCDate(d.getUTCDate()+n);$('day').value=d.toISOString().slice(0,10);loadLive();}
+$('prev').onclick=()=>dateShift(-1);$('next').onclick=()=>dateShift(1);
+function todayJst(){return new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);}
+$('today').onclick=()=>{$('day').value=todayJst();loadLive();};
+
+async function loadLive(){
+ const token=++request,day=$('day').value;records=[];source='';draw();
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day)){setStatus('日付を指定してください','error');return;}
+ setStatus(day+'｜海流モデルデータを読込中…','loading');
+ const path='data/amami-currents-'+day+'.json';
+ try{
+  let res=await fetch('https://raw.githubusercontent.com/mairikyuzuhozzy1010-del/amami-gt-demo/main/'+path,{cache:'no-cache'});
+  if(res.status===404)res=await fetch('./'+path,{cache:'no-cache'});
+  if(token!==request)return;
+  if(res.status===404){setStatus(day+'｜未取得：この日の海流はまだ保存されていません。','error');return;}
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const data=await res.json();if(token!==request)return;
+  if(!Array.isArray(data.points)||!data.points.length||data.date!==day||data.source!=='Copernicus Marine'||data.dataset!=='cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m'||!data.points.every(p=>p.date===day&&finite(p.lat)&&finite(p.lon)&&finite(p.u)&&finite(p.v)))throw Error('データ形式・出典・日付が不正です');
+  records=data.points;source='Copernicus Marine（日平均モデル）';draw();
+ }catch(e){if(token===request)setStatus(day+'｜読込エラー：'+e.message,'error');}
+}
+$('live').onclick=loadLive;
+const legend=L.control({position:'bottomleft'});legend.onAdd=()=>{const el=L.DomUtil.create('div','legend');el.innerHTML='<b>流速 m/s</b><br><span style="color:#0875c7">↑</span> 0～0.35未満<br><span style="color:#d48a09">↑</span> 0.35～0.7未満<br><span style="color:#e44b35">↑</span> 0.7以上';return el};legend.addTo(map);
+const requested=new URLSearchParams(location.search).get('date');$('day').value=requested&&/^\d{4}-\d{2}-\d{2}$/.test(requested)?requested:todayJst();
+loadLive();
+</script></body></html>
